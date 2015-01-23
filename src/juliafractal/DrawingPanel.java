@@ -13,11 +13,11 @@ public class DrawingPanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
 
-    public int vxn, vyn, vxk, vyk;
+    private int vxn, vyn, vxk, vyk;
     public double xmin, ymin, xmax, ymax;
-    public Double scale;
-    BufferedImage buffer;
-    Graphics2D graf;
+    private Double scale;
+    public BufferedImage buffer;
+    private Graphics2D graf;
     private double ja = -0.4;
     private double jb = 0.6;
     private int fractalColor;
