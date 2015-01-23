@@ -4,20 +4,24 @@ import java.awt.Color;
 import java.awt.Graphics;
 import javax.swing.JPanel;
 import java.awt.event.MouseAdapter;
-import java.awt.event.MouseMotionAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.awt.Graphics2D;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.io.File;
+import java.io.IOException;
+import javax.imageio.ImageIO;
+import javax.swing.JFileChooser;
 
 public class DrawingPanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
 
     private int vxn, vyn, vxk, vyk;
-    public double xmin, ymin, xmax, ymax;
+    private double xmin, ymin, xmax;
     private Double scale;
-    public BufferedImage buffer;
-    private Graphics2D graf;
+    private BufferedImage buffer;
     private double ja = -0.4;
     private double jb = 0.6;
     private int fractalColor;
@@ -27,6 +31,7 @@ public class DrawingPanel extends JPanel {
 
     public DrawingPanel() {
         super();
+
         this.addMouseListener(new MouseAdapter() {
             public void mousePressed(MouseEvent me) {
                 vxn = me.getX();
@@ -42,16 +47,14 @@ public class DrawingPanel extends JPanel {
                 drawJuliaFractal();
             }
         });
-        
+
         this.addMouseMotionListener(new MouseAdapter() {
-            public void mouseMoved(MouseEvent me){
+            public void mouseMoved(MouseEvent me) {
                 mouseX = xmin + me.getX() * scale;
                 mouseY = ymin + (getHeight() - me.getY()) * scale;
                 repaint();
             }
-        });
 
-        this.addMouseMotionListener(new MouseMotionAdapter() {
             public void mouseDragged(MouseEvent me) {
                 moveX = me.getX() - vxn;
                 moveY = me.getY() - vyn;
@@ -70,40 +73,72 @@ public class DrawingPanel extends JPanel {
                 }
             }
         });
+
+        this.addComponentListener(new ComponentAdapter() {
+            public void componentResized(ComponentEvent e) {
+                drawJuliaFractal();
+            }
+        });
+
         buffer = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
     }
 
-    public void setColor(int fractalColor) {
-        this.fractalColor = fractalColor;
-    }
-    
-    public void setIterationsCount(int iterationsCount){
-        this.iterationsCount = iterationsCount;
-    }
-    
-    public void setJuliaA(double ja){
-        this.ja = ja;
-    }
-
-    public void setJuliaB(double jb){
-        this.jb = jb;
-    }
-    
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
         g.drawImage(buffer, moveX, moveY, null);
         //g.drawString("x " + mouseX + ", y " + mouseY, 10, 10);
     }
 
+    public void setColor(int fractalColor) {
+        this.fractalColor = fractalColor;
+        drawJuliaFractal();
+    }
+
+    public void setIterationsCount(int iterationsCount) {
+        this.iterationsCount = iterationsCount;
+    }
+
+    public void setCoordinats(double xmin, double ymin, double xmax) {
+        this.xmin = xmin;
+        this.ymin = ymin;
+        this.xmax = xmax;
+        calcScale();
+    }
+
     public void calcScale() {
         scale = (xmax - xmin) / (this.getWidth());
+    }
+
+    public void setJuliaA(double ja) {
+        this.ja = ja;
+    }
+
+    public void setJuliaB(double jb) {
+        this.jb = jb;
+    }
+
+    public void savaImage() {
+        BufferedImage outImg = new BufferedImage(getWidth(), getHeight(), BufferedImage.TYPE_INT_RGB);
+        Graphics2D gr = outImg.createGraphics();
+        gr.drawImage(buffer, 0, 0, null);
+        JFileChooser fc = new JFileChooser();
+        File file = new File("image.bmp");
+        fc.setSelectedFile(file);
+        int rc = fc.showDialog(null, "Save image");
+        if (rc == JFileChooser.APPROVE_OPTION) {
+            file = fc.getSelectedFile();
+            try {
+                ImageIO.write(outImg, "BMP", file);
+            } catch (IOException e) {
+
+            }
+        }
     }
 
     public void Move(double dx, double dy) {
         xmin = xmin + dx * scale;
         xmax = xmax + dx * scale;
         ymin = ymin + dy * scale;
-        ymax = ymax + dy * scale;
     }
 
     public void ZoomIn(int x, int y) {
@@ -111,16 +146,15 @@ public class DrawingPanel extends JPanel {
             xmin = xmin + scale * 100;
             ymin = ymin + scale * 100;
             xmax = xmax - scale * 100;
-            ymax = ymax - scale * 100;
         } else {
             double xCursor = xmin + x * scale;
             double yCurcor = ymin + (this.getHeight() - y) * scale;
             xmin = (xCursor + xmin) * 0.5;
             ymin = (yCurcor + ymin) * 0.5;
             xmax = (xmax + xCursor) * 0.5;
-            ymax = (ymax + yCurcor) * 0.5;
         }
         calcScale();
+        drawJuliaFractal();
     }
 
     public void ZoomOut(int x, int y) {
@@ -128,7 +162,6 @@ public class DrawingPanel extends JPanel {
             xmin = xmin - scale * 100;
             ymin = ymin - scale * 100;
             xmax = xmax + scale * 100;
-            ymax = ymax + scale * 100;
         } else {
             double xCursor = xmin + x * scale;
             double yCurcor = ymin + (this.getHeight() - y) * scale;
@@ -136,10 +169,9 @@ public class DrawingPanel extends JPanel {
             xmin = xmin - (xCursor - xmin) * 1.25;
             ymin = ymin - (yCurcor - ymin) * 1.25;
             xmax = xmax + (xmax - xCursor) * 1.25;
-            ymax = ymax + (ymax - yCurcor) * 1.25;
         }
         calcScale();
-
+        drawJuliaFractal();
     }
 
     public void drawJuliaFractal() {
@@ -148,7 +180,7 @@ public class DrawingPanel extends JPanel {
                 int width = getWidth();
                 int height = getHeight();
                 buffer = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-                graf = buffer.createGraphics();
+                Graphics2D graph = buffer.createGraphics();
                 int px, py, iter = iterationsCount, i;
                 double dx_i, dy_i, dx_io, dy_io, len;
 
@@ -167,57 +199,56 @@ public class DrawingPanel extends JPanel {
                             len = dx_i * dx_i + dy_i * dy_i;
                         }
                         if (fractalColor == 1) {
-                            graf.setColor(new Color(255 * (iter - i) / iter, 255 * (iter - i) / iter, 255 * (iter - i) / iter));
+                            graph.setColor(new Color(255 * (iter - i) / iter, 255 * (iter - i) / iter, 255 * (iter - i) / iter));
                         } else if (fractalColor == 2) {
-                            int r = 0, gg = 0, b = 0;
+                            int rr, gg, bb;
                             if (len < 4) {
-                                r = 0;
+                                rr = 0;
                                 gg = 0;
-                                b = 0;
+                                bb = 0;
                             } else {
                                 double a1 = 255, a2 = 255, a3 = 255, b1 = 0, b2 = 0.87, b3 = 1.54, c1 = 0, c2 = 0, c3 = 0;
-                                r = Math.abs((int) (a1 * Math.sin(len + b1) + c1));
+                                rr = Math.abs((int) (a1 * Math.sin(len + b1) + c1));
                                 gg = Math.abs((int) (a2 * Math.sin(len + b2) + c2));
-                                b = Math.abs((int) (a3 * Math.sin(len + b3) + c3));
+                                bb = Math.abs((int) (a3 * Math.sin(len + b3) + c3));
                             }
-                            graf.setColor(new Color(r, gg, b));
+                            graph.setColor(new Color(rr, gg, bb));
                         } else if (fractalColor == 3) {
-                            int r = 0, gg = 0, b = 0;
+                            int rr = 0, gg = 0, bb = 0;
                             if (len < 4) {
-                                r = 0;
+                                rr = 0;
                                 gg = 0;
-                                b = 0;
+                                bb = 0;
                             }
                             if (len >= 4 && len < 6) {
-                                r = 0;
+                                rr = 0;
                                 gg = (int) (255 * len / 6);
-                                b = 255;
+                                bb = 255;
                             }
                             if (len < 12 && len > 6) {
-                                r = 0;
+                                rr = 0;
                                 gg = 255;
-                                b = 255 - (int) (255 * len / 12);
+                                bb = 255 - (int) (255 * len / 12);
                             }
                             if (len < 18 && len > 12) {
-                                r = 255 - (int) (200 * len / 18);
+                                rr = 255 - (int) (200 * len / 18);
                                 gg = 150;
-                                b = 0;
+                                bb = 0;
                             }
                             if (len > 18) {
-                                r = 255;
+                                rr = 255;
                                 gg = 255 - ((len < 28) ? (int) (255 * len / 28) : 255);
-                                b = 0;
+                                bb = 0;
                             }
-                            graf.setColor(new Color(r, gg, b));
+                            graph.setColor(new Color(rr, gg, bb));
                         } else if (fractalColor == 0) {
-                            graf.setColor(new Color(i * 23 % 255, i * 20 % 255, i * 16 % 255));
+                            graph.setColor(new Color(i * 23 % 255, i * 20 % 255, i * 16 % 255));
                         }
-                        graf.drawLine(px, py, px, py);
+                        graph.drawLine(px, py, px, py);
                     }
                 }
                 repaint();
             }
         });
-
     }
 }
